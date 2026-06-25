@@ -33,7 +33,7 @@ export function SellerHeader({ context = "Seller workspace" }: { context?: strin
               key={link.label}
               href={link.href}
               className={cn(
-                "inline-flex min-h-9 items-center rounded-full px-4 text-[13px] font-bold text-muted",
+                "inline-flex min-h-9 items-center px-4 text-[13px] font-bold text-muted",
                 pathname === link.href && "bg-[#eee8dd] text-ink",
               )}
             >
@@ -42,10 +42,10 @@ export function SellerHeader({ context = "Seller workspace" }: { context?: strin
           ))}
         </div>
         <div className="hidden items-center justify-end gap-2 md:flex">
-          <button className="grid h-[42px] w-[42px] place-items-center rounded-[7px] border border-line bg-white/70" aria-label="Search" type="button">
+          <button className="grid h-[42px] w-[42px] place-items-center border border-line bg-white/70" aria-label="Search" type="button">
             <Icon name="search" />
           </button>
-          <button className="grid h-[42px] w-[42px] place-items-center rounded-[7px] border border-line bg-white/70" aria-label="Notifications" type="button">
+          <button className="grid h-[42px] w-[42px] place-items-center border border-line bg-white/70" aria-label="Notifications" type="button">
             <Icon name="bell" />
           </button>
           <Button href="/products">Add product</Button>

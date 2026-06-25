@@ -2,7 +2,7 @@ import { Icon } from "@/components/Icon";
 
 export function SearchInput({ placeholder }: { placeholder: string }) {
   return (
-    <form role="search" className="flex h-11 items-center gap-3 rounded-[7px] border border-[#9f988c] bg-white/80 px-3.5 md:h-[52px]">
+    <form role="search" className="flex h-11 items-center gap-3 border border-[#9f988c] bg-white/80 px-3.5 md:h-[52px]">
       <Icon name="search" className="h-[19px] w-[19px]" />
       <label className="sr-only" htmlFor="inventory-search">
         Search product inventory

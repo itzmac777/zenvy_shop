@@ -39,3 +39,24 @@ body {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+.benefit-marquee {
+  animation: benefit-marquee 24s linear infinite;
+}
+
+@keyframes benefit-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .benefit-marquee {
+    animation: none;
+    overflow-x: auto;
+  }
+}

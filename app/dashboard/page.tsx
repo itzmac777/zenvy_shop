@@ -15,12 +15,12 @@ export default function DashboardPage() {
             <h1 className="font-serif text-[38px] font-normal leading-none md:text-[clamp(38px,4vw,58px)]">Good morning, Julia.</h1>
             <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted">Track wholesale performance, publish products, and keep buyer activity moving.</p>
           </div>
-          <div className="flex w-full gap-1.5 rounded-full border border-line bg-white/60 p-1 md:w-auto">
+          <div className="flex w-full gap-1.5 border border-line bg-white/60 p-1 md:w-auto">
             {["Today", "7 days", "30 days"].map((label) => (
               <button
                 key={label}
                 type="button"
-                className={`min-h-[34px] flex-1 rounded-full px-4 text-[13px] font-bold md:flex-none ${label === "7 days" ? "bg-olive text-white" : "text-muted"}`}
+                className={`min-h-[34px] flex-1 px-4 text-[13px] font-bold md:flex-none ${label === "7 days" ? "bg-olive text-white" : "text-muted"}`}
               >
                 {label}
               </button>

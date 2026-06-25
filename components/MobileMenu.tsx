@@ -46,18 +46,18 @@ export function MobileMenu({ items, cta, ariaLabel = "Open navigation menu" }: M
         aria-label={ariaLabel}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="grid h-[42px] w-[42px] place-items-center rounded-[7px] border border-line bg-white/70 text-ink"
+        className="grid h-[42px] w-[42px] place-items-center border border-line bg-[#fcfaf6] text-ink shadow-[0_8px_18px_rgba(38,35,30,0.06)]"
       >
         <Icon name="menu" />
       </button>
       {open ? (
-        <div className="absolute right-0 top-[calc(100%+12px)] z-40 grid w-[min(320px,calc(100vw-40px))] gap-1 rounded-[7px] border border-line bg-paper/98 p-3 shadow-menu">
+        <div className="absolute right-0 top-[calc(100%+12px)] z-50 grid w-[min(320px,calc(100vw-40px))] gap-1 border border-line bg-[#fcfaf6] p-3 shadow-[0_26px_70px_rgba(23,22,19,0.22)] ring-1 ring-white/70">
           {items.map((item) => (
             <Link
               key={item.label}
               href={item.href}
               onClick={() => setOpen(false)}
-              className="flex min-h-[42px] items-center rounded-md px-3 text-sm font-semibold hover:bg-[#f0ebe4]"
+              className="flex min-h-[42px] items-center px-3 text-sm font-semibold hover:bg-[#f0ebe4]"
             >
               {item.label}
             </Link>

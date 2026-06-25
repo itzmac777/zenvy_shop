@@ -4,6 +4,12 @@ import { Icon } from "@/components/Icon";
 import { MarketingHeader } from "@/components/MarketingHeader";
 import { categories, landingProducts } from "@/data/catalog";
 
+const benefits = [
+  { icon: "card" as const, title: "Flexible payment terms", copy: "Choose net 60 terms or pay on your schedule, built for your business." },
+  { icon: "tag" as const, title: "Curated products for every store", copy: "Handpicked goods from independent brands your customers will love." },
+  { icon: "box" as const, title: "Easy returns and fast reorders", copy: "Hassle-free first orders and a seamless reorder experience." },
+];
+
 export default function HomePage() {
   return (
     <>
@@ -26,65 +32,85 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="grid border-b border-line py-9 md:grid-cols-3">
-          {[
-            { icon: "card" as const, title: "Flexible payment terms", copy: "Choose net 60 terms or pay on your schedule, built for your business." },
-            { icon: "tag" as const, title: "Curated products for every store", copy: "Handpicked goods from independent brands your customers will love." },
-            { icon: "box" as const, title: "Easy returns and fast reorders", copy: "Hassle-free first orders and a seamless reorder experience." },
-          ].map((item) => (
-            <article key={item.title} className="grid grid-cols-[54px_minmax(0,1fr)] gap-4 border-b border-line py-5 last:border-b-0 md:grid-cols-[64px_minmax(0,1fr)] md:border-b-0 md:border-r md:px-8 md:last:border-r-0">
-              <span className="grid h-[50px] w-[50px] place-items-center rounded-full bg-[#f0ebe4] text-olive md:h-[58px] md:w-[58px]">
-                <Icon name={item.icon} />
-              </span>
-              <div>
-                <h2 className="mt-1 text-base font-bold leading-snug">{item.title}</h2>
-                <p className="mt-2 text-[13px] leading-relaxed text-muted">{item.copy}</p>
-              </div>
-            </article>
-          ))}
-        </section>
-
-        <section id="categories" className="grid gap-7 py-14 md:grid-cols-[260px_minmax(0,1fr)] md:items-center md:gap-16">
-          <div className="font-serif text-[32px] leading-none">
-            <p>Explore top</p>
-            <h2 className="font-normal">categories</h2>
+        <section className="border-b border-line py-7 md:py-9">
+          <div className="-mx-5 overflow-hidden md:hidden">
+            <div className="benefit-marquee flex w-max">
+              {[0, 1].map((set) => (
+                <div key={set} className="flex gap-3 px-5" aria-hidden={set === 1}>
+                  {benefits.map((item) => (
+                    <article key={`${set}-${item.title}`} className="grid w-[315px] flex-none grid-cols-[50px_minmax(0,1fr)] gap-4 border border-line bg-white/72 p-4 shadow-soft">
+                      <span className="grid h-[48px] w-[48px] place-items-center rounded-full bg-[#f0ebe4] text-olive">
+                        <Icon name={item.icon} />
+                      </span>
+                      <div>
+                        <h2 className="mt-1 text-[15px] font-bold leading-snug">{item.title}</h2>
+                        <p className="mt-2 text-[13px] leading-relaxed text-muted">{item.copy}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="grid gap-3 md:grid-cols-5 md:gap-5">
-            {categories.map((category, index) => (
-              <a
-                key={category.label}
-                href={category.href}
-                className={`inline-flex min-h-[60px] items-center justify-center gap-2.5 rounded-[7px] border px-3 text-[13px] font-bold ${
-                  index === 0 ? "border-[#6e6a60] bg-[#faf7f1]" : "border-line bg-white/80"
-                }`}
-              >
-                <Icon name={category.icon} />
-                {category.label}
-              </a>
+
+          <div className="hidden md:grid md:grid-cols-3">
+            {benefits.map((item) => (
+              <article key={item.title} className="grid grid-cols-[64px_minmax(0,1fr)] gap-4 border-r border-line px-8 last:border-r-0">
+                <span className="grid h-[58px] w-[58px] place-items-center rounded-full bg-[#f0ebe4] text-olive">
+                  <Icon name={item.icon} />
+                </span>
+                <div>
+                  <h2 className="mt-1 text-base font-bold leading-snug">{item.title}</h2>
+                  <p className="mt-2 text-[13px] leading-relaxed text-muted">{item.copy}</p>
+                </div>
+              </article>
             ))}
           </div>
         </section>
 
-        <section id="bestsellers" className="pb-14">
-          <div className="mb-7 flex items-end justify-between gap-6">
-            <h2 className="font-serif text-[34px] font-normal leading-none">Bestsellers</h2>
-            <a href="#all" className="text-sm font-bold">
-              View all bestsellers -&gt;
+        <section id="categories" className="mx-auto max-w-[1080px] py-14 md:py-20">
+          <h2 className="font-serif text-[30px] font-normal leading-none md:text-[34px]">Explore top categories</h2>
+          <div className="scrollbar-none -mx-5 mt-6 overflow-x-auto px-5 md:mx-0 md:px-0">
+            <div className="flex w-max gap-3 md:grid md:w-full md:grid-cols-5 md:gap-4">
+              {categories.map((category, index) => (
+                <a
+                  key={category.label}
+                  href={category.href}
+                  className={`inline-flex min-h-[46px] min-w-[136px] items-center justify-center gap-2.5 border px-4 text-[11px] font-extrabold tracking-[0.01em] transition hover:-translate-y-px md:min-w-0 ${
+                    index === 0 ? "border-olive bg-olive text-white" : "border-line bg-white/70 text-ink hover:border-[#b7ad9f] hover:bg-white"
+                  }`}
+                >
+                  <Icon name={category.icon} className="h-4 w-4" />
+                  {category.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="bestsellers" className="mx-auto max-w-[1080px] pb-16 md:pb-20">
+          <div className="mb-6 flex items-end justify-between gap-6 md:mb-8">
+            <h2 className="font-serif text-[34px] font-normal leading-none md:text-[38px]">Bestsellers</h2>
+            <a href="#all" className="inline-flex items-center gap-2 text-[12px] font-extrabold tracking-[0.01em]">
+              View all <span aria-hidden="true">-&gt;</span>
             </a>
           </div>
-          <div className="grid gap-5 md:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-3 md:gap-x-8 md:gap-y-11 xl:grid-cols-4">
             {landingProducts.map((product) => (
-              <article key={product.id} className="overflow-hidden rounded-[7px] border border-line bg-white">
-                <Image src={product.image} alt={product.alt} width={700} height={700} className="aspect-square w-full object-cover" />
-                <div className="min-h-32 p-4">
-                  <p className="text-[13px] text-muted">{product.brand}</p>
-                  <h3 className="mt-1 text-[15px] font-bold leading-snug">{product.name}</h3>
-                  <div className="mt-2 text-xs tracking-wide">
-                    ★★★★★ <span className="ml-2 text-muted">{product.ratingCount}</span>
+              <article key={product.id} className="group min-w-0">
+                <Image src={product.image} alt={product.alt} width={700} height={700} className="aspect-square w-full bg-[#efe8dd] object-cover transition duration-300 group-hover:brightness-[0.97]" />
+                <div className="pt-3">
+                  <p className="truncate text-[9px] font-extrabold uppercase tracking-[0.13em] text-muted">{product.brand}</p>
+                  <h3 className="mt-1 font-serif text-[16px] font-normal leading-tight md:text-[18px]">{product.name}</h3>
+                  <div className="mt-2 flex items-center gap-2 text-[11px] tracking-[0.08em]">
+                    <span aria-label="5 star rating">★★★★★</span>
+                    <span className="text-[11px] tracking-normal text-muted">{product.ratingCount}</span>
                   </div>
-                  <div className="mt-3 flex justify-between gap-3 text-[13px]">
-                    <strong>{product.price}</strong>
-                    <span className="text-muted">{product.terms}</span>
+                  <div className="mt-2 flex items-center justify-between gap-2 text-[13px] md:text-sm">
+                    <strong className="text-[17px] leading-none md:text-[18px]">{product.price}</strong>
+                    <span className="inline-flex min-h-5 items-center whitespace-nowrap rounded-full bg-[#eee8dd] px-2 text-[9px] font-bold text-muted">
+                      {product.terms}
+                    </span>
                   </div>
                 </div>
               </article>
@@ -92,7 +118,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="mb-8 grid overflow-hidden rounded-[7px] border border-line/70 bg-gradient-to-br from-[#fbf8f2] to-[#f5f0e8] shadow-soft md:grid-cols-[1.5fr_repeat(3,1fr)]">
+        <section className="mb-8 grid overflow-hidden border border-line/70 bg-gradient-to-br from-[#fbf8f2] to-[#f5f0e8] shadow-soft md:grid-cols-[1.5fr_repeat(3,1fr)]">
           <blockquote className="border-b border-line p-7 font-serif text-xl leading-relaxed md:border-b-0 md:p-10">
             “Zenvy is an essential partner for our shop. The brands are incredible, the terms are fair, and reordering is so simple.”
             <cite className="mt-5 block font-sans text-xs not-italic text-muted">Julia Park, Owner: Haven & Fold</cite>
@@ -110,7 +136,7 @@ export default function HomePage() {
           ))}
         </section>
 
-        <section id="join" className="grid gap-7 rounded-[7px] bg-[linear-gradient(90deg,rgba(55,62,43,0.96),rgba(55,62,43,0.88)),url('https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1600&q=84')] bg-cover bg-center p-7 text-white md:grid-cols-[1fr_auto] md:items-center md:p-10 xl:px-20">
+        <section id="join" className="grid gap-7 bg-[linear-gradient(90deg,rgba(55,62,43,0.96),rgba(55,62,43,0.88)),url('https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1600&q=84')] bg-cover bg-center p-7 text-white md:grid-cols-[1fr_auto] md:items-center md:p-10 xl:px-20">
           <div>
             <h2 className="max-w-md font-serif text-[34px] font-normal leading-tight md:text-[38px]">Ready to grow your shelf with Zenvy?</h2>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-white/80">Join thousands of retailers finding the best independent brands in one place.</p>

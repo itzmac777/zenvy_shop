@@ -22,7 +22,7 @@ export function Button({ children, className, href, variant = "primary", ...prop
     <Link
       href={href}
       className={cn(
-        "inline-flex min-h-11 items-center justify-center rounded-[7px] border px-6 text-sm font-bold transition hover:-translate-y-px",
+        "inline-flex min-h-11 items-center justify-center border px-6 text-sm font-bold transition hover:-translate-y-px",
         variants[variant],
         className,
       )}
