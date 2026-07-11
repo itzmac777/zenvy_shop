@@ -120,22 +120,66 @@ export type Category = {
   icon: IconName;
 };
 
+export type SubscriptionPlan = {
+  id: string;
+  name: string;
+  provider: string;
+  price: string;
+  billingPeriod: string;
+  badge: string;
+  shortDescription: string;
+  description: string;
+  rating: number;
+  ratingCount: number;
+  soldQuantity: number;
+  stockQuantity: number;
+  features: string[];
+  whatYouGet: string;
+  deliveryNote: string;
+  refundSummary: string;
+  thumbnailTone: string;
+  thumbnail: string;
+  thumbnailAlt: string;
+  brandKind: "chatgpt" | "netflix" | "youtube";
+  brandLabel: string;
+  brandColor: string;
+  brandBackground: string;
+  brandTextColor: string;
+  icon: IconName;
+  featured?: boolean;
+};
+
+export type Testimonial = {
+  id: string;
+  name: string;
+  role: string;
+  quote: string;
+  rating: number;
+  avatar: string;
+  avatarAlt: string;
+};
+
 export type IconName =
   | "analytics"
   | "bell"
   | "box"
   | "calendar"
   | "card"
+  | "check"
   | "chart"
   | "filters"
   | "home"
   | "jewelry"
+  | "lock"
   | "menu"
   | "package"
+  | "play"
   | "plus"
   | "printer"
   | "refresh"
   | "search"
+  | "shield"
+  | "support"
   | "tag"
   | "users"
   | "wand"
