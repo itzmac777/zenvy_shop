@@ -33,7 +33,7 @@ function formatUsdAmount(amount: number) {
 
 function getGmPayInvoiceAmount(baseAmount: number, orderNumber: string) {
   const suffix = Number(orderNumber.slice(-4));
-  const dust = ((Number.isFinite(suffix) ? suffix : 0) % 90 + 10) / 10000;
+  const dust = (((Number.isFinite(suffix) ? suffix : 0) % 49) + 101) / 10000;
   return Number((baseAmount + dust).toFixed(4));
 }
 

@@ -15,7 +15,7 @@ export async function migrate() {
       payment_method text not null,
       status text not null,
       amount text not null,
-      numeric_amount numeric(12, 2) not null,
+      numeric_amount numeric(12, 4) not null,
       currency text not null,
       product_name text not null,
       order_placed_at timestamptz not null,
@@ -34,5 +34,6 @@ export async function migrate() {
     );
   `);
 
+  await pool.query("alter table orders alter column numeric_amount type numeric(12, 4);");
   await pool.query("create index if not exists orders_contact_idx on orders (lower(contact), created_at desc);");
 }
