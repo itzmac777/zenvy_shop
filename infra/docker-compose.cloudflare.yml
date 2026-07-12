@@ -1,0 +1,23 @@
+services:
+  edge:
+    build:
+      context: ..
+      dockerfile: infra/docker/caddy-cloudflare.Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${ZENVY_EDGE_BIND:-0.0.0.0}:2053:2053"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-shop.zenvy.com.bd}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@zenvy.com.bd}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:?Set CLOUDFLARE_API_TOKEN for Caddy DNS-01 certificates}
+    volumes:
+      - ./Caddyfile.cloudflare:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - client
+      - server
+
+volumes:
+  caddy_data:
+  caddy_config:

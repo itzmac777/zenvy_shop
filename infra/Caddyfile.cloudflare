@@ -1,0 +1,12 @@
+{
+	email {$ACME_EMAIL:admin@zenvy.com.bd}
+	auto_https disable_redirects
+	acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+}
+
+https://{$APP_DOMAIN:shop.zenvy.com.bd}:2053 {
+	encode zstd gzip
+
+	reverse_proxy /api/* server:4000
+	reverse_proxy client:3000
+}

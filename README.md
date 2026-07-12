@@ -45,6 +45,51 @@ Route `shop.zenvy.com.bd` through the existing VPS proxy:
 
 Do not bind Zenvy to `80`, `443`, `4000`, or `8443` on this VPS.
 
+## Cloudflare Without Tunnel
+
+If Cloudflare Tunnel asks for billing details, use the optional Cloudflare origin-port setup instead. It keeps Mailu on public `80/443`, keeps the portal on `8443/4000`, and exposes only Zenvy's edge proxy on Cloudflare-supported HTTPS port `2053`.
+
+This overlay uses Caddy with the Cloudflare DNS module. Caddy gets and renews public TLS certificates automatically through DNS-01, so it does not need to bind `80` or `443`.
+
+In Cloudflare:
+
+1. Keep `shop.zenvy.com.bd` as a proxied `A` record pointing to the VPS IP.
+2. Create an Origin Rule for hostname `shop.zenvy.com.bd`.
+3. Set Destination Port to `2053`.
+4. Create a scoped Cloudflare API token with `Zone:Read` and `DNS:Edit` for the `zenvy.com.bd` zone.
+
+On the VPS:
+
+```bash
+cd /root/zenvy_shop
+cp .env.example .env
+nano .env
+docker compose -f infra/docker-compose.yml -f infra/docker-compose.cloudflare.yml up -d --build
+```
+
+Set these values in `.env` before starting the overlay:
+
+```env
+APP_DOMAIN=shop.zenvy.com.bd
+ACME_EMAIL=admin@zenvy.com.bd
+CLOUDFLARE_API_TOKEN=your_scoped_cloudflare_token
+```
+
+Verify:
+
+```bash
+sudo ss -tulpn | grep -E ':80|:443|:8443|:4000|:2053|:3100|:4100'
+curl -k https://127.0.0.1:2053/api/health -H 'Host: shop.zenvy.com.bd'
+curl https://shop.zenvy.com.bd/api/health
+```
+
+Expected port ownership:
+
+- Mailu still owns public `80/443`.
+- Existing portal still owns `8443/4000`.
+- Zenvy edge owns public `2053`.
+- Zenvy app containers stay on localhost `3100/4100`.
+
 ## Required Environment Variables
 
 - `CLIENT_PUBLIC_URL`: public storefront origin, for example `https://shop.zenvy.com.bd`.
