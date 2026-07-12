@@ -101,7 +101,7 @@ Expected port ownership:
 - `GMPAY_SECRET_KEY`: merchant signing key from GM Pay admin API key records.
 - `GMPAY_CURRENCY`: fiat currency sent to GM Pay. Use `cny` for 4-decimal USDT cashier amounts like `1.0323 USDT`; use `bdt` only after configuring a BDT rate in GM Pay.
 - `GMPAY_USD_TO_FIAT_RATE`: storefront USD-to-GM-Pay-fiat conversion rate, for example `6.99` when `GMPAY_CURRENCY=cny`.
-- `GMPAY_FIAT_DUST_CENTS`: small fiat-cent uniqueness range added before GM Pay converts to USDT, for example `20`.
+- `GMPAY_FIAT_DUST_CENTS`: small fiat-cent uniqueness range added before GM Pay converts to USDT, for example `50`.
 - `GMPAY_TOKEN`: optional GM Pay token lock for new crypto orders, for example `USDT`.
 - `GMPAY_NETWORK`: optional GM Pay network lock for new crypto orders, for example `binance` for BSC.
 - `GMPAY_RECEIVE_ADDRESS`: BSC USDT receiving address used by the fallback tx-hash verifier.

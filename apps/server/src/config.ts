@@ -13,7 +13,7 @@ export const config = {
     secretKey: process.env.GMPAY_SECRET_KEY || "",
     currency: gmPayCurrency,
     usdToFiatRate: Number(process.env.GMPAY_USD_TO_FIAT_RATE || (gmPayCurrency === "cny" ? 6.99 : 1)),
-    fiatDustCents: Number(process.env.GMPAY_FIAT_DUST_CENTS || 20),
+    fiatDustCents: Number(process.env.GMPAY_FIAT_DUST_CENTS || 50),
     notifyUrl: process.env.GMPAY_NOTIFY_URL || "",
     returnUrl: process.env.GMPAY_RETURN_URL || "",
     token: process.env.GMPAY_TOKEN || "",
