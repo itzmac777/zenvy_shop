@@ -2,6 +2,7 @@ import { createApp } from "./app";
 import { startBscPaymentWatcher } from "./bsc-payment-watcher";
 import { config } from "./config";
 import { migrate } from "./db";
+import { startSubmittedTxVerifier } from "./submitted-tx-verifier";
 
 async function main() {
   await migrate();
@@ -9,6 +10,7 @@ async function main() {
   app.listen(config.port, () => {
     console.log(`Zenvy server listening on ${config.port}`);
     startBscPaymentWatcher();
+    startSubmittedTxVerifier();
   });
 }
 

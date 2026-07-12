@@ -1,7 +1,12 @@
 import "dotenv/config";
 
 const gmPayCurrency = (process.env.GMPAY_CURRENCY || "usd").toLowerCase();
-const defaultBscRpcUrls = ["https://bsc-mainnet.public.blastapi.io", "https://bsc-rpc.publicnode.com"];
+const defaultBscRpcUrls = [
+  "https://bsc-mainnet.public.blastapi.io",
+  "https://bsc-rpc.publicnode.com",
+  "https://bsc-dataseed.bnbchain.org",
+  "https://bsc-dataseed-public.bnbchain.org",
+];
 const bscRpcUrls = (process.env.GMPAY_BSC_RPC_URLS || process.env.GMPAY_BSC_RPC_URL || defaultBscRpcUrls.join(","))
   .split(",")
   .map((url) => url.trim())
@@ -28,10 +33,13 @@ export const config = {
     bscRpcTimeoutMs: Number(process.env.GMPAY_BSC_RPC_TIMEOUT_MS || 10000),
     bscUsdtContract: process.env.GMPAY_BSC_USDT_CONTRACT || "0x55d398326f99059fF775485246999027B3197955",
     bscWatcherEnabled: process.env.GMPAY_BSC_WATCHER_ENABLED !== "false",
-    bscWatcherIntervalMs: Number(process.env.GMPAY_BSC_WATCHER_INTERVAL_MS || 15000),
+    bscWatcherIntervalMs: Number(process.env.GMPAY_BSC_WATCHER_INTERVAL_MS || 10000),
     bscWatcherConfirmations: Number(process.env.GMPAY_BSC_WATCHER_CONFIRMATIONS || 3),
     bscWatcherLookbackBlocks: Number(process.env.GMPAY_BSC_WATCHER_LOOKBACK_BLOCKS || 1200),
     bscWatcherBlockBatchSize: Number(process.env.GMPAY_BSC_WATCHER_BLOCK_BATCH_SIZE || 10),
+    bscWatcherReorgBlocks: Number(process.env.GMPAY_BSC_WATCHER_REORG_BLOCKS || 30),
+    orderExpirationMinutes: Number(process.env.GMPAY_ORDER_EXPIRATION_MINUTES || 20),
+    submittedTxPollIntervalMs: Number(process.env.GMPAY_SUBMITTED_TX_POLL_INTERVAL_MS || 15000),
   },
 };
 

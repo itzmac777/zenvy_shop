@@ -1,9 +1,15 @@
 import { config } from "./config";
 import { decimalToUnits, getCurrentBscBlockNumber, normalizeAddress, scanBscUsdtTransfersTo } from "./bsc-verifier";
-import { findOrderByGmPayTxHash, findPendingGmPayOrders, markGmPayOrderPaid } from "./orders-repo";
+import {
+  findOrderByGmPayTxHash,
+  findPendingGmPayOrders,
+  getWatcherCursor,
+  markGmPayOrderPaid,
+  recordPaymentEvent,
+  saveWatcherCursor,
+} from "./orders-repo";
 
 let isRunning = false;
-let lastScannedBlock: number | undefined;
 
 function groupByReceiveAddress(orders: Awaited<ReturnType<typeof findPendingGmPayOrders>>) {
   const groups = new Map<string, typeof orders>();
@@ -19,34 +25,51 @@ function groupByReceiveAddress(orders: Awaited<ReturnType<typeof findPendingGmPa
   return groups;
 }
 
+function expectedAmountForOrder(order: Awaited<ReturnType<typeof findPendingGmPayOrders>>[number]) {
+  const expectedAmount = order.gmpay?.expectedAmount || order.gmpay?.actualAmount;
+  return expectedAmount && Number(expectedAmount) > 0 ? expectedAmount : String(order.numericAmount);
+}
+
 async function runBscPaymentScan() {
   if (isRunning) return;
   isRunning = true;
 
   try {
-    const pendingOrders = await findPendingGmPayOrders();
+    const pendingOrders = await findPendingGmPayOrders(1000, config.gmpay.orderExpirationMinutes);
     if (pendingOrders.length === 0) return;
 
     const currentBlock = await getCurrentBscBlockNumber();
     const safeToBlock = currentBlock - config.gmpay.bscWatcherConfirmations;
     if (safeToBlock <= 0) return;
 
-    const lookbackStart = Math.max(0, safeToBlock - config.gmpay.bscWatcherLookbackBlocks + 1);
-    const fromBlock = Math.max(lookbackStart, lastScannedBlock === undefined ? lookbackStart : lastScannedBlock + 1);
-    if (fromBlock > safeToBlock) return;
+    const globalLookbackStart = Math.max(0, safeToBlock - config.gmpay.bscWatcherLookbackBlocks + 1);
 
     for (const [receiveAddress, addressOrders] of groupByReceiveAddress(pendingOrders)) {
+      const lastCursor = await getWatcherCursor({ network: "binance", token: "USDT", receiveAddress });
+      const cursorFromBlock =
+        lastCursor === undefined ? globalLookbackStart : Math.max(0, lastCursor - config.gmpay.bscWatcherReorgBlocks + 1);
+      const fromBlock = Math.max(globalLookbackStart, cursorFromBlock);
+      if (fromBlock > safeToBlock) continue;
+
       const transfers = await scanBscUsdtTransfersTo({
         receiveAddress,
         fromBlock,
         toBlock: safeToBlock,
       });
 
-      if (transfers.length === 0) continue;
+      if (transfers.length === 0) {
+        await saveWatcherCursor({
+          network: "binance",
+          token: "USDT",
+          receiveAddress,
+          lastScannedBlock: safeToBlock,
+        });
+        continue;
+      }
 
       const ordersByAmount = new Map<string, typeof addressOrders>();
       for (const order of addressOrders) {
-        const expectedAmount = decimalToUnits(order.numericAmount).toString();
+        const expectedAmount = decimalToUnits(expectedAmountForOrder(order)).toString();
         ordersByAmount.set(expectedAmount, [...(ordersByAmount.get(expectedAmount) || []), order]);
       }
 
@@ -78,11 +101,25 @@ async function runBscPaymentScan() {
         console.log(
           `[bsc-watcher] marked order ${order.orderNumber} paid from ${transfer.txHash} at block ${transfer.blockNumber}`,
         );
+        await recordPaymentEvent({
+          orderNumber: order.orderNumber,
+          eventType: "watcher_payment_matched",
+          metadata: { txHash: transfer.txHash, amount: transfer.amount, blockNumber: transfer.blockNumber },
+        });
       }
-    }
 
-    lastScannedBlock = safeToBlock;
+      await saveWatcherCursor({
+        network: "binance",
+        token: "USDT",
+        receiveAddress,
+        lastScannedBlock: safeToBlock,
+      });
+    }
   } catch (error) {
+    await recordPaymentEvent({
+      eventType: "watcher_scan_failed",
+      message: error instanceof Error ? error.message : "BSC watcher scan failed.",
+    });
     console.error("[bsc-watcher] scan failed", error);
   } finally {
     isRunning = false;

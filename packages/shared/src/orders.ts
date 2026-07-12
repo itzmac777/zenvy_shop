@@ -2,7 +2,7 @@ import { subscriptionPlans } from "./catalog";
 import type { SubscriptionPlan } from "./types";
 
 export type PaymentMethodId = "bkash" | "gmpay";
-export type OrderStatus = "pending_payment" | "paid" | "expired" | "manual_review" | "failed";
+export type OrderStatus = "pending_payment" | "payment_submitted" | "paid" | "expired" | "manual_review" | "failed";
 
 export type OrderSummary = {
   orderNumber: string;
@@ -27,6 +27,11 @@ export type OrderSummary = {
     network?: string;
     expirationTime?: number;
     txHash?: string;
+    expectedAmount?: string;
+    submittedTxHash?: string;
+    submittedTxStatus?: "pending" | "verified" | "failed";
+    submittedTxError?: string;
+    submittedAt?: string;
   };
 };
 

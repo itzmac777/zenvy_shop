@@ -30,7 +30,7 @@ For local server development without Docker, set `DATABASE_URL` to a reachable P
 Copy `.env.example` to `.env`, update secrets/domains, then run:
 
 ```bash
-docker compose -f infra/docker-compose.yml up --build
+docker compose --env-file .env -f infra/docker-compose.yml up --build
 ```
 
 On the current VPS, Mailu already owns public ports `80` and `443`, so Zenvy does not run its own Caddy service. The Compose stack publishes only localhost ports:
@@ -64,7 +64,7 @@ On the VPS:
 cd /root/zenvy_shop
 cp .env.example .env
 nano .env
-docker compose -f infra/docker-compose.yml -f infra/docker-compose.cloudflare.yml up -d --build
+docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.cloudflare.yml up -d --build
 ```
 
 Set these values in `.env` before starting the overlay:
@@ -109,15 +109,18 @@ Expected port ownership:
 - `GMPAY_BSC_RPC_TIMEOUT_MS`: timeout for each BSC RPC attempt, usually `10000`.
 - `GMPAY_BSC_USDT_CONTRACT`: USDT BEP-20 contract used by the fallback verifier.
 - `GMPAY_BSC_WATCHER_ENABLED`: set to `true` to let Zenvy auto-detect BSC USDT payments that GM Pay misses.
-- `GMPAY_BSC_WATCHER_INTERVAL_MS`: watcher polling interval, usually `15000`.
+- `GMPAY_BSC_WATCHER_INTERVAL_MS`: watcher polling interval, usually `10000` for the BSC-only launch.
 - `GMPAY_BSC_WATCHER_CONFIRMATIONS`: BSC confirmations before Zenvy marks an order paid, usually `3`.
 - `GMPAY_BSC_WATCHER_LOOKBACK_BLOCKS`: how far back each watcher scan checks, usually `1200`.
 - `GMPAY_BSC_WATCHER_BLOCK_BATCH_SIZE`: maximum blocks requested per `eth_getLogs` call. Use `10` for compatibility with free public BlastAPI limits.
+- `GMPAY_BSC_WATCHER_REORG_BLOCKS`: overlap blocks rechecked after the persisted watcher cursor, usually `30`.
+- `GMPAY_ORDER_EXPIRATION_MINUTES`: active pending order window used for amount collision checks and watcher scans, usually `20`.
+- `GMPAY_SUBMITTED_TX_POLL_INTERVAL_MS`: interval for async submitted-hash verification, usually `15000`.
 - `GMPAY_NOTIFY_URL`: GM Pay callback URL, usually `https://shop.zenvy.com.bd/api/gmpay/notify`.
 - `GMPAY_RETURN_URL`: customer return URL, usually `https://shop.zenvy.com.bd/order-inquiry`.
 - `OPENAI_API_KEY`: only needed when regenerating image assets.
 
-bKash payment capture is still manual. Crypto payments use GM Pay as an external hosted cashier: the Express server creates a pending order, redirects customers to GM Pay, and marks the order paid after a signed callback. For crypto orders, Zenvy can keep storefront pricing in USD while sending GM Pay a fiat invoice such as CNY; GM Pay then returns the real 4-decimal `actual_amount` in USDT, which Zenvy stores for watcher and tx-hash verification. Zenvy also has an optional BSC USDT watcher that scans confirmed token transfers to the configured receiving wallet and marks exact-amount pending orders paid if GM Pay misses auto-detection.
+bKash payment capture is still manual. Crypto payments use GM Pay as an external hosted cashier: the Express server creates a pending order, redirects customers to GM Pay, and marks the order paid after a signed callback. For crypto orders, Zenvy can keep storefront pricing in USD while sending GM Pay a fiat invoice such as CNY; GM Pay can return the real 4-decimal `actual_amount` in USDT, which Zenvy stores as the expected crypto amount for watcher and tx-hash verification. If GM Pay does not return that amount during order creation, Zenvy falls back to minimum-amount verification for compatibility. Zenvy also has a BSC USDT watcher that scans confirmed token transfers to the configured receiving wallet and marks pending orders paid if GM Pay misses auto-detection. Manual tx-hash submissions are accepted immediately and verified asynchronously, so fresh transactions do not fail just because the RPC has not indexed them yet.
 
 ## GM Pay Setup Notes
 
@@ -131,7 +134,7 @@ GM Pay/Epusdt remains a separate service, usually at `pay.zenvy.store`. A typica
 - Receiver wallets configured inside GM Pay admin.
 - Chain/RPC settings configured inside GM Pay admin. TRON commonly uses TronGrid; Solana uses an HTTP/HTTPS RPC; EVM chains such as Ethereum, BSC, and Polygon should use WSS endpoints per GM Pay's monitoring requirements.
 
-For a no-account BSC setup, `wss://bsc-rpc.publicnode.com` can be used as GM Pay's general WebSocket listener and `https://bsc-mainnet.public.blastapi.io` as its manual-verification HTTP node. Zenvy's fallback watcher can use BlastAPI first and PublicNode second through `GMPAY_BSC_RPC_URLS`. These public services have no uptime guarantee, so the independent watcher and transaction-hash fallback should remain enabled.
+For a no-account BSC setup, `wss://bsc-rpc.publicnode.com` can be used as GM Pay's general WebSocket listener and `https://bsc-mainnet.public.blastapi.io` as its manual-verification HTTP node. Zenvy's fallback watcher should use several free HTTP endpoints through `GMPAY_BSC_RPC_URLS`: BlastAPI, PublicNode, `bsc-dataseed.bnbchain.org`, and `bsc-dataseed-public.bnbchain.org`. These public services have no uptime guarantee, so GM Pay, the independent watcher, and async transaction-hash fallback should all remain enabled.
 
 Useful references:
 

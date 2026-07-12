@@ -13,8 +13,11 @@ type OrderStatusCardProps = {
   paymentTime?: string;
   statusTitle?: string;
   txHash?: string;
+  submittedTxHash?: string;
+  submittedTxStatus?: "pending" | "verified" | "failed";
   paymentUrl?: string;
   actualAmount?: string;
+  expectedAmount?: string;
   token?: string;
   network?: string;
   statusNote?: string;
@@ -31,8 +34,11 @@ export function OrderStatusCard({
   paymentTime = "-",
   statusTitle = "Pending payment",
   txHash,
+  submittedTxHash,
+  submittedTxStatus,
   paymentUrl,
   actualAmount,
+  expectedAmount,
   token,
   network,
   statusNote,
@@ -69,11 +75,20 @@ export function OrderStatusCard({
             <dd className="break-all font-bold">{txHash}</dd>
           </div>
         ) : null}
-        {actualAmount || token || network ? (
+        {!txHash && submittedTxHash ? (
+          <div className="md:col-span-2">
+            <dt className="text-muted">Submitted transaction hash</dt>
+            <dd className="break-all font-bold">{submittedTxHash}</dd>
+            <p className="mt-1 text-[12px] font-bold text-muted">
+              {submittedTxStatus === "failed" ? "Needs review" : "Waiting for BSC confirmations"}
+            </p>
+          </div>
+        ) : null}
+        {actualAmount || expectedAmount || token || network ? (
           <div className="md:col-span-2">
             <dt className="text-muted">Crypto payment</dt>
             <dd className="font-bold">
-              {[actualAmount, token, network].filter(Boolean).join(" ")}
+              {[actualAmount || expectedAmount, token, network].filter(Boolean).join(" ")}
             </dd>
           </div>
         ) : null}

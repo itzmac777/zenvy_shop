@@ -1,10 +1,22 @@
 import cors from "cors";
 import express from "express";
 import { findPlan, formatOrderAmount, getOrderProductName, getUnitAmount, normalizeQuantity } from "@zenvy/shared/orders";
-import { verifyBscUsdtTransfer } from "./bsc-verifier";
+import { getBscRpcStatus } from "./bsc-verifier";
 import { config } from "./config";
 import { createGmPayTransaction, type GmPayCallbackPayload, verifyGmPaySignature } from "./gmpay";
-import { createOrderNumber, findOrder, findOrderByGmPayTxHash, markGmPayOrderPaid, saveOrder, type OrderInput } from "./orders-repo";
+import {
+  createOrderNumber,
+  findOrder,
+  findOrderByGmPayTxHash,
+  findOrderBySubmittedGmPayTxHash,
+  getPaymentHealthSummary,
+  hasActiveGmPayAmountCollision,
+  markGmPayOrderPaid,
+  recordPaymentEvent,
+  saveOrder,
+  submitGmPayTxHash,
+  type OrderInput,
+} from "./orders-repo";
 
 function field(body: Record<string, unknown>, name: string) {
   const value = body[name];
@@ -27,11 +39,17 @@ function sendOrderResponse(req: express.Request, res: express.Response, order: A
   return res.redirect(303, redirectTo || inquiryUrl(order.orderNumber, order.contact));
 }
 
-function getGmPayFiatAmount(usdAmount: number, orderNumber: string) {
+function getGmPayFiatAmount(usdAmount: number, orderNumber: string, attempt: number, precision: 2 | 4) {
   const suffix = Number(orderNumber.slice(-4));
   const dustCents = Math.max(0, Math.min(99, config.gmpay.fiatDustCents));
-  const centOffset = dustCents > 0 ? ((Number.isFinite(suffix) ? suffix : 0) % dustCents) + 1 : 0;
-  return Number((usdAmount * config.gmpay.usdToFiatRate + centOffset / 100).toFixed(2));
+  const dustUnits = precision === 4 ? dustCents * 100 : dustCents;
+  const offset = dustUnits > 0 ? (((Number.isFinite(suffix) ? suffix : 0) + attempt * 997) % dustUnits) + 1 : 0;
+  const divisor = precision === 4 ? 10000 : 100;
+  return Number((usdAmount * config.gmpay.usdToFiatRate + offset / divisor).toFixed(precision));
+}
+
+function getExpectedCryptoAmount(transaction: { actual_amount?: number }) {
+  return transaction.actual_amount !== undefined && Number(transaction.actual_amount) > 0 ? String(transaction.actual_amount) : undefined;
 }
 
 export function createApp() {
@@ -45,6 +63,25 @@ export function createApp() {
     res.json({ ok: true });
   });
 
+  app.get("/api/payments/health", async (_req, res, next) => {
+    try {
+      const summary = await getPaymentHealthSummary();
+      res.json({
+        ok: true,
+        ...summary,
+        bscRpc: getBscRpcStatus(),
+        watcher: {
+          enabled: config.gmpay.bscWatcherEnabled,
+          intervalMs: config.gmpay.bscWatcherIntervalMs,
+          confirmations: config.gmpay.bscWatcherConfirmations,
+          reorgBlocks: config.gmpay.bscWatcherReorgBlocks,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.post("/api/orders", async (req, res, next) => {
     try {
       const plan = findPlan(field(req.body, "plan"));
@@ -52,9 +89,8 @@ export function createApp() {
       const contact = field(req.body, "contact");
       const paymentMethod = field(req.body, "method") === "bkash" ? "bkash" : "gmpay";
       const numericAmount = getUnitAmount(plan) * quantity;
-      const orderNumber = createOrderNumber();
       const now = new Date();
-      const baseOrder: OrderInput = {
+      const baseOrder = (orderNumber: string): OrderInput => ({
         orderNumber,
         contact,
         planId: plan.id,
@@ -66,60 +102,115 @@ export function createApp() {
         currency: config.gmpay.currency,
         productName: getOrderProductName(plan),
         orderPlacedAt: now,
-      };
+      });
 
       if (paymentMethod === "bkash") {
-        const order = await saveOrder({ ...baseOrder, status: "manual_review" });
+        const order = await saveOrder({ ...baseOrder(createOrderNumber()), status: "manual_review" });
         return sendOrderResponse(req, res, order);
       }
 
       if (numericAmount <= 0) {
         const order = await saveOrder({
-          ...baseOrder,
+          ...baseOrder(createOrderNumber()),
           status: "manual_review",
           error: "This product needs a finalized price before GM Pay checkout can start.",
         });
         return sendOrderResponse(req, res, order);
       }
 
+      const maxCreateAttempts = 8;
+
       try {
-        const returnUrl = new URL(config.gmpay.returnUrl || inquiryUrl(orderNumber, contact));
-        returnUrl.searchParams.set("order", orderNumber);
-        if (contact) returnUrl.searchParams.set("contact", contact);
-        const gmPayFiatAmount = getGmPayFiatAmount(numericAmount, orderNumber);
+        for (let attempt = 0; attempt < maxCreateAttempts; attempt += 1) {
+          const orderNumber = createOrderNumber();
+          const orderDraft = baseOrder(orderNumber);
+          const returnUrl = new URL(config.gmpay.returnUrl || inquiryUrl(orderNumber, contact));
+          returnUrl.searchParams.set("order", orderNumber);
+          if (contact) returnUrl.searchParams.set("contact", contact);
 
-        const transaction = await createGmPayTransaction({
-          order_id: orderNumber,
-          amount: gmPayFiatAmount,
-          name: baseOrder.productName,
-          redirect_url: returnUrl.toString(),
-          token: config.gmpay.token || undefined,
-          network: config.gmpay.network || undefined,
-        });
+          let transaction;
+          try {
+            transaction = await createGmPayTransaction({
+              order_id: orderNumber,
+              amount: getGmPayFiatAmount(numericAmount, orderNumber, attempt, 4),
+              name: orderDraft.productName,
+              redirect_url: returnUrl.toString(),
+              token: config.gmpay.token || undefined,
+              network: config.gmpay.network || undefined,
+            });
+          } catch (error) {
+            transaction = await createGmPayTransaction({
+              order_id: orderNumber,
+              amount: getGmPayFiatAmount(numericAmount, orderNumber, attempt, 2),
+              name: orderDraft.productName,
+              redirect_url: returnUrl.toString(),
+              token: config.gmpay.token || undefined,
+              network: config.gmpay.network || undefined,
+            });
+          }
 
-        const order = await saveOrder({
-          ...baseOrder,
-          status: transaction.status === 3 ? "expired" : "pending_payment",
-          currency: String(transaction.currency || baseOrder.currency).toLowerCase(),
-          amount: baseOrder.amount,
-          numericAmount: numericAmount, // keep original USD amount — BSC watcher matches on-chain USDT using this
-          gmpay: {
-            tradeId: transaction.trade_id,
-            paymentUrl: transaction.payment_url,
-            actualAmount: transaction.actual_amount !== undefined ? String(transaction.actual_amount) : undefined,
-            receiveAddress: transaction.receive_address,
-            token: transaction.token,
-            network: transaction.network,
-            expirationTime: transaction.expiration_time,
-          },
-        });
+          const expectedAmount = getExpectedCryptoAmount(transaction);
+          const receiveAddress = transaction.receive_address || config.gmpay.receiveAddress;
+          const token = transaction.token || config.gmpay.token || "USDT";
+          const network = transaction.network || config.gmpay.network || "binance";
+          const hasCollision = await hasActiveGmPayAmountCollision({
+            expectedAmount,
+            receiveAddress,
+            token,
+            network,
+            excludeOrderNumber: orderNumber,
+            expirationMinutes: config.gmpay.orderExpirationMinutes,
+          });
 
-        return sendOrderResponse(req, res, order, transaction.payment_url || inquiryUrl(order.orderNumber, order.contact));
+          if (hasCollision) {
+            await recordPaymentEvent({
+              orderNumber,
+              eventType: "gmpay_amount_collision",
+              message: "GM Pay returned an already-active payable amount; retrying with a new order.",
+              metadata: { expectedAmount, receiveAddress, token, network, tradeId: transaction.trade_id },
+            });
+            continue;
+          }
+
+          const order = await saveOrder({
+            ...orderDraft,
+            status: transaction.status === 3 ? "expired" : "pending_payment",
+            currency: String(transaction.currency || orderDraft.currency).toLowerCase(),
+            amount: orderDraft.amount,
+            numericAmount,
+            gmpay: {
+              tradeId: transaction.trade_id,
+              paymentUrl: transaction.payment_url,
+              actualAmount: expectedAmount,
+              expectedAmount,
+              receiveAddress: transaction.receive_address,
+              token: transaction.token,
+              network: transaction.network,
+              expirationTime: transaction.expiration_time,
+            },
+          });
+
+          await recordPaymentEvent({
+            orderNumber: order.orderNumber,
+            eventType: "gmpay_order_created",
+            metadata: { expectedAmount, receiveAddress, token, network, tradeId: transaction.trade_id },
+          });
+
+          return sendOrderResponse(req, res, order, transaction.payment_url || inquiryUrl(order.orderNumber, order.contact));
+        }
+
+        throw new Error("Could not reserve a unique GM Pay payment amount. Please try again in a moment.");
       } catch (error) {
+        const orderNumber = createOrderNumber();
         const order = await saveOrder({
-          ...baseOrder,
+          ...baseOrder(orderNumber),
           status: "failed",
           error: error instanceof Error ? error.message : "GM Pay checkout could not be created.",
+        });
+        await recordPaymentEvent({
+          orderNumber,
+          eventType: "gmpay_create_failed",
+          message: error instanceof Error ? error.message : "GM Pay checkout could not be created.",
         });
         return sendOrderResponse(req, res, order);
       }
@@ -144,6 +235,12 @@ export function createApp() {
     const payload = req.body as GmPayCallbackPayload;
     if (!verifyGmPaySignature(payload)) return res.status(401).type("text/plain").send("fail");
 
+    await recordPaymentEvent({
+      orderNumber: payload.order_id,
+      eventType: "gmpay_callback_received",
+      metadata: { status: payload.status, tradeId: payload.trade_id, txHash: payload.block_transaction_id },
+    });
+
     if (payload.status === 2 && payload.order_id) {
       await markGmPayOrderPaid({
         orderNumber: payload.order_id,
@@ -167,6 +264,9 @@ export function createApp() {
       const order = await findOrder({ orderNumber });
 
       if (!order) return res.status(404).json({ error: "Order not found." });
+      if (!/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
+        return res.status(400).json({ error: "Enter the full BSC transaction hash." });
+      }
       if (order.contact && contact && order.contact.toLowerCase() !== contact.toLowerCase()) {
         return res.status(403).json({ error: "Contact information does not match this order." });
       }
@@ -177,32 +277,31 @@ export function createApp() {
       if (existingTxOrder && existingTxOrder.orderNumber !== order.orderNumber) {
         return res.status(409).json({ error: "This transaction hash has already been used for another order." });
       }
+      const existingSubmittedTxOrder = await findOrderBySubmittedGmPayTxHash(txHash);
+      if (existingSubmittedTxOrder && existingSubmittedTxOrder.orderNumber !== order.orderNumber) {
+        return res.status(409).json({ error: "This transaction hash has already been submitted for another order." });
+      }
 
       const receiveAddress = order.gmpay?.receiveAddress || config.gmpay.receiveAddress;
       if (!receiveAddress) {
         return res.status(500).json({ error: "BSC receiving address is not configured." });
       }
 
-      const verified = await verifyBscUsdtTransfer({
+      const submittedOrder = await submitGmPayTxHash({
+        orderNumber: order.orderNumber,
         txHash,
-        receiveAddress,
-        minimumAmount: order.numericAmount,
       });
 
-      const paidOrder = await markGmPayOrderPaid({
+      await recordPaymentEvent({
         orderNumber: order.orderNumber,
-        tradeId: order.gmpay?.tradeId,
-        actualAmount: Number(verified.amount),
-        receiveAddress: verified.receiveAddress,
-        token: "USDT",
-        network: "binance",
-        txHash: verified.txHash,
+        eventType: "manual_tx_submitted",
+        metadata: { txHash },
       });
 
       if (!wantsJson(req)) {
         return res.redirect(303, inquiryUrl(order.orderNumber, order.contact));
       }
-      return res.json({ order: paidOrder });
+      return res.json({ order: submittedOrder });
     } catch (error) {
       return next(error);
     }

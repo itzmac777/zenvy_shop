@@ -22,6 +22,8 @@ type RpcResponse = {
 };
 
 let bscRpcStartIndex = 0;
+let lastSuccessfulRpcUrl = "";
+let lastRpcError = "";
 
 export type BscUsdtTransfer = {
   amount: string;
@@ -89,14 +91,24 @@ async function bscRpc<T>(method: string, params: unknown[]) {
       }
 
       bscRpcStartIndex = index;
+      lastSuccessfulRpcUrl = rpcUrl;
+      lastRpcError = "";
       return payload.result as T;
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown RPC error";
       errors.push(`${rpcLabel(rpcUrl)}: ${message}`);
+      lastRpcError = message;
     }
   }
 
   throw new Error(`BSC RPC request failed across ${rpcUrls.length} endpoint(s): ${errors.join("; ")}`);
+}
+
+export function getBscRpcStatus() {
+  return {
+    endpoint: lastSuccessfulRpcUrl ? rpcLabel(lastSuccessfulRpcUrl) : null,
+    lastError: lastRpcError || null,
+  };
 }
 
 export async function getCurrentBscBlockNumber() {
@@ -144,7 +156,8 @@ export async function scanBscUsdtTransfersTo(input: {
 export async function verifyBscUsdtTransfer(input: {
   txHash: string;
   receiveAddress: string;
-  minimumAmount: number;
+  minimumAmount?: number;
+  exactAmount?: string | number;
 }) {
   const txHash = input.txHash.trim();
   if (!/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
@@ -157,7 +170,8 @@ export async function verifyBscUsdtTransfer(input: {
 
   const expectedContract = normalizeAddress(config.gmpay.bscUsdtContract);
   const expectedToTopic = addressTopic(input.receiveAddress);
-  const minimumUnits = decimalToUnits(input.minimumAmount, BSC_USDT_DECIMALS);
+  const exactUnits = input.exactAmount !== undefined ? decimalToUnits(input.exactAmount, BSC_USDT_DECIMALS) : undefined;
+  const minimumUnits = input.minimumAmount !== undefined ? decimalToUnits(input.minimumAmount, BSC_USDT_DECIMALS) : undefined;
 
   for (const log of receipt.logs || []) {
     const topics = log.topics || [];
@@ -166,7 +180,8 @@ export async function verifyBscUsdtTransfer(input: {
     if (topics[2]?.toLowerCase() !== expectedToTopic) continue;
 
     const transferred = BigInt(log.data || "0x0");
-    if (transferred >= minimumUnits) {
+    const isMatchingAmount = exactUnits !== undefined ? transferred === exactUnits : minimumUnits !== undefined && transferred >= minimumUnits;
+    if (isMatchingAmount) {
       return {
         amount: unitsToDecimal(transferred, BSC_USDT_DECIMALS),
         receiveAddress: input.receiveAddress,

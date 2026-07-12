@@ -39,6 +39,7 @@ async function lookupOrder(params: InquirySearchParams) {
 
 function titleForStatus(status?: string) {
   if (status === "paid") return "Payment verified";
+  if (status === "payment_submitted") return "Payment submitted";
   if (status === "expired") return "Expired";
   if (status === "manual_review") return "Manual review";
   if (status === "failed") return "Payment setup failed";
@@ -100,11 +101,14 @@ export default async function OrderInquiryPage({ searchParams }: { searchParams:
               paymentTime={paymentTime}
               statusTitle={statusTitle}
               txHash={storedOrder?.gmpay?.txHash || params.tx}
-              paymentUrl={storedOrder?.status === "pending_payment" ? storedOrder.gmpay?.paymentUrl : undefined}
+              submittedTxHash={storedOrder?.gmpay?.submittedTxHash}
+              submittedTxStatus={storedOrder?.gmpay?.submittedTxStatus}
+              paymentUrl={storedOrder?.status === "pending_payment" || storedOrder?.status === "payment_submitted" ? storedOrder.gmpay?.paymentUrl : undefined}
               actualAmount={storedOrder?.gmpay?.actualAmount}
+              expectedAmount={storedOrder?.gmpay?.expectedAmount}
               token={storedOrder?.gmpay?.token}
               network={storedOrder?.gmpay?.network}
-              statusNote={storedOrder?.error}
+              statusNote={storedOrder?.gmpay?.submittedTxError || storedOrder?.error}
             />
           </div>
         ) : hasLookup ? (
