@@ -1,0 +1,9 @@
+**/node_modules
+**/.next
+**/dist
+.git
+.local-orders
+*.log
+.env
+.env.local
+tsconfig.tsbuildinfo

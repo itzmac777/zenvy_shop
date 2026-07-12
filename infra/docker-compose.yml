@@ -1,0 +1,69 @@
+name: zenvy
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-zenvy}
+      POSTGRES_USER: ${POSTGRES_USER:-zenvy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-zenvy} -d ${POSTGRES_DB:-zenvy}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: ..
+      dockerfile: infra/docker/server.Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL:-postgres://zenvy:change_me@postgres:5432/zenvy}
+      CLIENT_PUBLIC_URL: ${CLIENT_PUBLIC_URL:-https://zenvy.store}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://zenvy.store}
+      GMPAY_BASE_URL: ${GMPAY_BASE_URL:-}
+      GMPAY_PID: ${GMPAY_PID:-}
+      GMPAY_SECRET_KEY: ${GMPAY_SECRET_KEY:-}
+      GMPAY_CURRENCY: ${GMPAY_CURRENCY:-usd}
+      GMPAY_NOTIFY_URL: ${GMPAY_NOTIFY_URL:-https://zenvy.store/api/gmpay/notify}
+      GMPAY_RETURN_URL: ${GMPAY_RETURN_URL:-https://zenvy.store/order-inquiry}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  client:
+    build:
+      context: ..
+      dockerfile: infra/docker/client.Dockerfile
+    restart: unless-stopped
+    environment:
+      SERVER_INTERNAL_URL: ${SERVER_INTERNAL_URL:-http://server:4000}
+    depends_on:
+      - server
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+      CADDY_EMAIL: ${CADDY_EMAIL:-admin@example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - client
+      - server
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

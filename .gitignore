@@ -1,7 +1,12 @@
 .next/
 node_modules/
 .pnpm-store/
+dist/
+**/dist/
+**/.next/
 tsconfig.tsbuildinfo
+**/tsconfig.tsbuildinfo
 *.log
 .env*
 !.env.example
+.local-orders/

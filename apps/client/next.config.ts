@@ -1,0 +1,23 @@
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  transpilePackages: ["@zenvy/shared"],
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+    ],
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${process.env.SERVER_INTERNAL_URL || "http://localhost:4000"}/api/:path*`,
+      },
+    ];
+  },
+};
+
+export default nextConfig;
