@@ -51,9 +51,9 @@ export const paymentMethods: Array<{
   },
   {
     id: "gmpay",
-    title: "GM Pay",
-    label: "USDT / USDC crypto checkout",
-    description: "Pay through the hosted GM Pay cashier for automatic on-chain detection.",
+    title: "USDT",
+    label: "On-chain crypto checkout",
+    description: "Pay with USDT on BSC through an automatic on-chain checkout.",
     speed: "Auto verification",
   },
 ];

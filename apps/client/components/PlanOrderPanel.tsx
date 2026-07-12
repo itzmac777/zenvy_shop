@@ -16,9 +16,9 @@ function PaymentLogo({ method }: { method: PaymentMethodId }) {
   }
 
   return (
-    <span className="grid h-9 w-[58px] shrink-0 grid-cols-[22px_1fr] items-center rounded-[6px] bg-[#111111] px-2 text-white">
-      <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-[12px] font-extrabold text-[#111111]">G</span>
-      <span className="text-[11px] font-extrabold">Pay</span>
+    <span className="grid h-9 w-[58px] shrink-0 grid-cols-[22px_1fr] items-center rounded-[6px] bg-[#26a17b] px-2 text-white">
+      <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-[12px] font-extrabold text-[#26a17b]">₮</span>
+      <span className="text-[10px] font-extrabold">USDT</span>
     </span>
   );
 }
