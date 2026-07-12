@@ -76,7 +76,7 @@ export const subscriptionPlans: SubscriptionPlan[] = [
     id: "chatgpt-plus",
     name: "ChatGPT Plus",
     provider: "AI workspace",
-    price: "$20",
+    price: "$0.50",
     billingPeriod: "month",
     badge: "Popular",
     shortDescription: "Premium AI access for everyday writing, research, and productivity.",
