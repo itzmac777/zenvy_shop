@@ -105,11 +105,15 @@ Expected port ownership:
 - `GMPAY_RECEIVE_ADDRESS`: BSC USDT receiving address used by the fallback tx-hash verifier.
 - `GMPAY_BSC_RPC_URL`: HTTP BSC RPC used by the fallback verifier.
 - `GMPAY_BSC_USDT_CONTRACT`: USDT BEP-20 contract used by the fallback verifier.
+- `GMPAY_BSC_WATCHER_ENABLED`: set to `true` to let Zenvy auto-detect BSC USDT payments that GM Pay misses.
+- `GMPAY_BSC_WATCHER_INTERVAL_MS`: watcher polling interval, usually `15000`.
+- `GMPAY_BSC_WATCHER_CONFIRMATIONS`: BSC confirmations before Zenvy marks an order paid, usually `3`.
+- `GMPAY_BSC_WATCHER_LOOKBACK_BLOCKS`: how far back each watcher scan checks, usually `1200`.
 - `GMPAY_NOTIFY_URL`: GM Pay callback URL, usually `https://shop.zenvy.com.bd/api/gmpay/notify`.
 - `GMPAY_RETURN_URL`: customer return URL, usually `https://shop.zenvy.com.bd/order-inquiry`.
 - `OPENAI_API_KEY`: only needed when regenerating image assets.
 
-bKash payment capture is still manual. Crypto payments use GM Pay as an external hosted cashier: the Express server creates a pending order, redirects customers to GM Pay, and marks the order paid after a signed callback.
+bKash payment capture is still manual. Crypto payments use GM Pay as an external hosted cashier: the Express server creates a pending order, redirects customers to GM Pay, and marks the order paid after a signed callback. Zenvy also has an optional BSC USDT watcher that scans confirmed token transfers to the configured receiving wallet and marks exact-amount pending orders paid if GM Pay misses auto-detection.
 
 ## GM Pay Setup Notes
 

@@ -149,6 +149,23 @@ export async function findOrderByGmPayTxHash(txHash: string) {
   return null;
 }
 
+export async function findPendingGmPayOrders(limit = 100) {
+  const result = await pool.query<OrderRow>(
+    `
+      select *
+      from orders
+      where payment_method = 'gmpay'
+        and status = 'pending_payment'
+        and gmpay_tx_hash is null
+      order by order_placed_at desc
+      limit $1
+    `,
+    [limit],
+  );
+
+  return result.rows.map(rowToOrder);
+}
+
 export async function markGmPayOrderPaid(input: {
   orderNumber: string;
   tradeId?: string;

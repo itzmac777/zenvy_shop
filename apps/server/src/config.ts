@@ -17,6 +17,10 @@ export const config = {
     receiveAddress: process.env.GMPAY_RECEIVE_ADDRESS || "",
     bscRpcUrl: process.env.GMPAY_BSC_RPC_URL || "https://bsc-dataseed.binance.org/",
     bscUsdtContract: process.env.GMPAY_BSC_USDT_CONTRACT || "0x55d398326f99059fF775485246999027B3197955",
+    bscWatcherEnabled: process.env.GMPAY_BSC_WATCHER_ENABLED !== "false",
+    bscWatcherIntervalMs: Number(process.env.GMPAY_BSC_WATCHER_INTERVAL_MS || 15000),
+    bscWatcherConfirmations: Number(process.env.GMPAY_BSC_WATCHER_CONFIRMATIONS || 3),
+    bscWatcherLookbackBlocks: Number(process.env.GMPAY_BSC_WATCHER_LOOKBACK_BLOCKS || 1200),
   },
 };
 

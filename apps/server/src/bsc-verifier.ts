@@ -8,6 +8,7 @@ type RpcLog = {
   topics?: string[];
   data?: string;
   transactionHash?: string;
+  blockNumber?: string;
 };
 
 type RpcReceipt = {
@@ -16,30 +17,90 @@ type RpcReceipt = {
 };
 
 type RpcResponse = {
-  result?: RpcReceipt | null;
+  result?: unknown;
   error?: { message?: string };
 };
 
-function normalizeAddress(address: string) {
+export type BscUsdtTransfer = {
+  amount: string;
+  amountUnits: bigint;
+  blockNumber: number;
+  receiveAddress: string;
+  txHash: string;
+};
+
+export function normalizeAddress(address: string) {
   return address.trim().toLowerCase();
 }
 
-function addressTopic(address: string) {
+export function addressTopic(address: string) {
   return `0x${normalizeAddress(address).replace(/^0x/, "").padStart(64, "0")}`;
 }
 
-function decimalToUnits(value: string | number, decimals: number) {
+export function decimalToUnits(value: string | number, decimals: number = BSC_USDT_DECIMALS) {
   const raw = String(value).trim();
   const [whole = "0", fraction = ""] = raw.split(".");
   const normalizedFraction = fraction.padEnd(decimals, "0").slice(0, decimals);
   return BigInt(`${whole || "0"}${normalizedFraction}`.replace(/^0+(?=\d)/, "") || "0");
 }
 
-function unitsToDecimal(value: bigint, decimals: number) {
+export function unitsToDecimal(value: bigint, decimals: number = BSC_USDT_DECIMALS) {
   const padded = value.toString().padStart(decimals + 1, "0");
   const whole = padded.slice(0, -decimals);
   const fraction = padded.slice(-decimals).replace(/0+$/, "");
   return fraction ? `${whole}.${fraction}` : whole;
+}
+
+function hexBlock(block: number) {
+  return `0x${Math.max(0, block).toString(16)}`;
+}
+
+async function bscRpc<T>(method: string, params: unknown[]) {
+  const response = await fetch(config.gmpay.bscRpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", method, params, id: 1 }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as RpcResponse | null;
+  if (!response.ok || !payload || payload.error) {
+    throw new Error(payload?.error?.message || "BSC RPC verification failed.");
+  }
+
+  return payload.result as T;
+}
+
+export async function getCurrentBscBlockNumber() {
+  const block = await bscRpc<string>("eth_blockNumber", []);
+  return Number.parseInt(block, 16);
+}
+
+export async function scanBscUsdtTransfersTo(input: {
+  receiveAddress: string;
+  fromBlock: number;
+  toBlock: number;
+}) {
+  const logs = await bscRpc<RpcLog[]>("eth_getLogs", [
+    {
+      address: config.gmpay.bscUsdtContract,
+      fromBlock: hexBlock(input.fromBlock),
+      toBlock: hexBlock(input.toBlock),
+      topics: [TRANSFER_TOPIC, null, addressTopic(input.receiveAddress)],
+    },
+  ]);
+
+  return logs
+    .filter((log) => log.transactionHash && log.data && log.blockNumber)
+    .map((log): BscUsdtTransfer => {
+      const amountUnits = BigInt(log.data || "0x0");
+      return {
+        amount: unitsToDecimal(amountUnits),
+        amountUnits,
+        blockNumber: Number.parseInt(log.blockNumber || "0x0", 16),
+        receiveAddress: input.receiveAddress,
+        txHash: log.transactionHash || "",
+      };
+    });
 }
 
 export async function verifyBscUsdtTransfer(input: {
@@ -52,23 +113,7 @@ export async function verifyBscUsdtTransfer(input: {
     throw new Error("Enter the full BSC transaction hash.");
   }
 
-  const response = await fetch(config.gmpay.bscRpcUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      method: "eth_getTransactionReceipt",
-      params: [txHash],
-      id: 1,
-    }),
-  });
-
-  const payload = (await response.json().catch(() => null)) as RpcResponse | null;
-  if (!response.ok || !payload || payload.error) {
-    throw new Error(payload?.error?.message || "BSC RPC verification failed.");
-  }
-
-  const receipt = payload.result;
+  const receipt = await bscRpc<RpcReceipt | null>("eth_getTransactionReceipt", [txHash]);
   if (!receipt) throw new Error("Transaction was not found on BSC yet.");
   if (receipt.status !== "0x1") throw new Error("Transaction is not successful.");
 

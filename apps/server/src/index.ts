@@ -1,4 +1,5 @@
 import { createApp } from "./app";
+import { startBscPaymentWatcher } from "./bsc-payment-watcher";
 import { config } from "./config";
 import { migrate } from "./db";
 
@@ -7,6 +8,7 @@ async function main() {
   const app = createApp();
   app.listen(config.port, () => {
     console.log(`Zenvy server listening on ${config.port}`);
+    startBscPaymentWatcher();
   });
 }
 
