@@ -105,12 +105,14 @@ Expected port ownership:
 - `GMPAY_TOKEN`: optional GM Pay token lock for new crypto orders, for example `USDT`.
 - `GMPAY_NETWORK`: optional GM Pay network lock for new crypto orders, for example `binance` for BSC.
 - `GMPAY_RECEIVE_ADDRESS`: BSC USDT receiving address used by the fallback tx-hash verifier.
-- `GMPAY_BSC_RPC_URL`: HTTP BSC RPC used by the fallback verifier.
+- `GMPAY_BSC_RPC_URLS`: comma-separated HTTP BSC RPC endpoints used by the fallback verifier and watcher. The server tries the next endpoint after a timeout or RPC error. The legacy singular `GMPAY_BSC_RPC_URL` remains supported.
+- `GMPAY_BSC_RPC_TIMEOUT_MS`: timeout for each BSC RPC attempt, usually `10000`.
 - `GMPAY_BSC_USDT_CONTRACT`: USDT BEP-20 contract used by the fallback verifier.
 - `GMPAY_BSC_WATCHER_ENABLED`: set to `true` to let Zenvy auto-detect BSC USDT payments that GM Pay misses.
 - `GMPAY_BSC_WATCHER_INTERVAL_MS`: watcher polling interval, usually `15000`.
 - `GMPAY_BSC_WATCHER_CONFIRMATIONS`: BSC confirmations before Zenvy marks an order paid, usually `3`.
 - `GMPAY_BSC_WATCHER_LOOKBACK_BLOCKS`: how far back each watcher scan checks, usually `1200`.
+- `GMPAY_BSC_WATCHER_BLOCK_BATCH_SIZE`: maximum blocks requested per `eth_getLogs` call. Use `10` for compatibility with free public BlastAPI limits.
 - `GMPAY_NOTIFY_URL`: GM Pay callback URL, usually `https://shop.zenvy.com.bd/api/gmpay/notify`.
 - `GMPAY_RETURN_URL`: customer return URL, usually `https://shop.zenvy.com.bd/order-inquiry`.
 - `OPENAI_API_KEY`: only needed when regenerating image assets.
@@ -128,6 +130,8 @@ GM Pay/Epusdt remains a separate service, usually at `pay.zenvy.store`. A typica
 - Merchant API credentials from GM Pay admin: `pid` and `secret_key`.
 - Receiver wallets configured inside GM Pay admin.
 - Chain/RPC settings configured inside GM Pay admin. TRON commonly uses TronGrid; Solana uses an HTTP/HTTPS RPC; EVM chains such as Ethereum, BSC, and Polygon should use WSS endpoints per GM Pay's monitoring requirements.
+
+For a no-account BSC setup, `wss://bsc-rpc.publicnode.com` can be used as GM Pay's general WebSocket listener and `https://bsc-mainnet.public.blastapi.io` as its manual-verification HTTP node. Zenvy's fallback watcher can use BlastAPI first and PublicNode second through `GMPAY_BSC_RPC_URLS`. These public services have no uptime guarantee, so the independent watcher and transaction-hash fallback should remain enabled.
 
 Useful references:
 

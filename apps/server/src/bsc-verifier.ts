@@ -21,6 +21,8 @@ type RpcResponse = {
   error?: { message?: string };
 };
 
+let bscRpcStartIndex = 0;
+
 export type BscUsdtTransfer = {
   amount: string;
   amountUnits: bigint;
@@ -55,19 +57,46 @@ function hexBlock(block: number) {
   return `0x${Math.max(0, block).toString(16)}`;
 }
 
-async function bscRpc<T>(method: string, params: unknown[]) {
-  const response = await fetch(config.gmpay.bscRpcUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", method, params, id: 1 }),
-  });
+function rpcLabel(rpcUrl: string) {
+  try {
+    return new URL(rpcUrl).host;
+  } catch {
+    return "invalid endpoint";
+  }
+}
 
-  const payload = (await response.json().catch(() => null)) as RpcResponse | null;
-  if (!response.ok || !payload || payload.error) {
-    throw new Error(payload?.error?.message || "BSC RPC verification failed.");
+async function bscRpc<T>(method: string, params: unknown[]) {
+  const rpcUrls = config.gmpay.bscRpcUrls;
+  const errors: string[] = [];
+
+  if (rpcUrls.length === 0) throw new Error("No BSC RPC endpoint is configured.");
+
+  for (let offset = 0; offset < rpcUrls.length; offset += 1) {
+    const index = (bscRpcStartIndex + offset) % rpcUrls.length;
+    const rpcUrl = rpcUrls[index];
+
+    try {
+      const response = await fetch(rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", method, params, id: 1 }),
+        signal: AbortSignal.timeout(Math.max(1000, config.gmpay.bscRpcTimeoutMs)),
+      });
+
+      const payload = (await response.json().catch(() => null)) as RpcResponse | null;
+      if (!response.ok || !payload || payload.error) {
+        throw new Error(payload?.error?.message || `HTTP ${response.status}`);
+      }
+
+      bscRpcStartIndex = index;
+      return payload.result as T;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown RPC error";
+      errors.push(`${rpcLabel(rpcUrl)}: ${message}`);
+    }
   }
 
-  return payload.result as T;
+  throw new Error(`BSC RPC request failed across ${rpcUrls.length} endpoint(s): ${errors.join("; ")}`);
 }
 
 export async function getCurrentBscBlockNumber() {
@@ -80,14 +109,23 @@ export async function scanBscUsdtTransfersTo(input: {
   fromBlock: number;
   toBlock: number;
 }) {
-  const logs = await bscRpc<RpcLog[]>("eth_getLogs", [
-    {
-      address: config.gmpay.bscUsdtContract,
-      fromBlock: hexBlock(input.fromBlock),
-      toBlock: hexBlock(input.toBlock),
-      topics: [TRANSFER_TOPIC, null, addressTopic(input.receiveAddress)],
-    },
-  ]);
+  const fromBlock = Math.max(0, Math.floor(input.fromBlock));
+  const toBlock = Math.max(0, Math.floor(input.toBlock));
+  const batchSize = Math.max(1, Math.floor(config.gmpay.bscWatcherBlockBatchSize));
+  const logs: RpcLog[] = [];
+
+  for (let batchFrom = fromBlock; batchFrom <= toBlock; batchFrom += batchSize) {
+    const batchTo = Math.min(toBlock, batchFrom + batchSize - 1);
+    const batchLogs = await bscRpc<RpcLog[]>("eth_getLogs", [
+      {
+        address: config.gmpay.bscUsdtContract,
+        fromBlock: hexBlock(batchFrom),
+        toBlock: hexBlock(batchTo),
+        topics: [TRANSFER_TOPIC, null, addressTopic(input.receiveAddress)],
+      },
+    ]);
+    logs.push(...batchLogs);
+  }
 
   return logs
     .filter((log) => log.transactionHash && log.data && log.blockNumber)

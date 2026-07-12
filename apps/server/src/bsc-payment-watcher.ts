@@ -3,6 +3,7 @@ import { decimalToUnits, getCurrentBscBlockNumber, normalizeAddress, scanBscUsdt
 import { findOrderByGmPayTxHash, findPendingGmPayOrders, markGmPayOrderPaid } from "./orders-repo";
 
 let isRunning = false;
+let lastScannedBlock: number | undefined;
 
 function groupByReceiveAddress(orders: Awaited<ReturnType<typeof findPendingGmPayOrders>>) {
   const groups = new Map<string, typeof orders>();
@@ -30,7 +31,9 @@ async function runBscPaymentScan() {
     const safeToBlock = currentBlock - config.gmpay.bscWatcherConfirmations;
     if (safeToBlock <= 0) return;
 
-    const fromBlock = Math.max(0, safeToBlock - config.gmpay.bscWatcherLookbackBlocks);
+    const lookbackStart = Math.max(0, safeToBlock - config.gmpay.bscWatcherLookbackBlocks + 1);
+    const fromBlock = Math.max(lookbackStart, lastScannedBlock === undefined ? lookbackStart : lastScannedBlock + 1);
+    if (fromBlock > safeToBlock) return;
 
     for (const [receiveAddress, addressOrders] of groupByReceiveAddress(pendingOrders)) {
       const transfers = await scanBscUsdtTransfersTo({
@@ -77,6 +80,8 @@ async function runBscPaymentScan() {
         );
       }
     }
+
+    lastScannedBlock = safeToBlock;
   } catch (error) {
     console.error("[bsc-watcher] scan failed", error);
   } finally {
