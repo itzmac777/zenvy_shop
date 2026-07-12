@@ -102,7 +102,7 @@ export function createApp() {
           status: transaction.status === 3 ? "expired" : "pending_payment",
           currency: String(transaction.currency || baseOrder.currency).toLowerCase(),
           amount: baseOrder.amount,
-          numericAmount: transaction.actual_amount ?? transaction.amount ?? gmPayFiatAmount,
+          numericAmount: numericAmount, // keep original USD amount — BSC watcher matches on-chain USDT using this
           gmpay: {
             tradeId: transaction.trade_id,
             paymentUrl: transaction.payment_url,
