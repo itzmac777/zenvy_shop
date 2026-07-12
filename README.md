@@ -102,6 +102,9 @@ Expected port ownership:
 - `GMPAY_CURRENCY`: fiat currency sent to GM Pay, usually `usd`.
 - `GMPAY_TOKEN`: optional GM Pay token lock for new crypto orders, for example `USDT`.
 - `GMPAY_NETWORK`: optional GM Pay network lock for new crypto orders, for example `binance` for BSC.
+- `GMPAY_RECEIVE_ADDRESS`: BSC USDT receiving address used by the fallback tx-hash verifier.
+- `GMPAY_BSC_RPC_URL`: HTTP BSC RPC used by the fallback verifier.
+- `GMPAY_BSC_USDT_CONTRACT`: USDT BEP-20 contract used by the fallback verifier.
 - `GMPAY_NOTIFY_URL`: GM Pay callback URL, usually `https://shop.zenvy.com.bd/api/gmpay/notify`.
 - `GMPAY_RETURN_URL`: customer return URL, usually `https://shop.zenvy.com.bd/order-inquiry`.
 - `OPENAI_API_KEY`: only needed when regenerating image assets.

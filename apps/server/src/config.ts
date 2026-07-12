@@ -14,6 +14,9 @@ export const config = {
     returnUrl: process.env.GMPAY_RETURN_URL || "",
     token: process.env.GMPAY_TOKEN || "",
     network: process.env.GMPAY_NETWORK || "",
+    receiveAddress: process.env.GMPAY_RECEIVE_ADDRESS || "",
+    bscRpcUrl: process.env.GMPAY_BSC_RPC_URL || "https://bsc-dataseed.binance.org/",
+    bscUsdtContract: process.env.GMPAY_BSC_USDT_CONTRACT || "0x55d398326f99059fF775485246999027B3197955",
   },
 };
 

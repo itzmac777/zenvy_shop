@@ -140,6 +140,15 @@ export async function findOrder({ orderNumber, contact }: { orderNumber?: string
   return null;
 }
 
+export async function findOrderByGmPayTxHash(txHash: string) {
+  const result = await pool.query<OrderRow>(
+    "select * from orders where lower(gmpay_tx_hash) = lower($1) limit 1",
+    [txHash],
+  );
+  if (result.rows[0]) return rowToOrder(result.rows[0]);
+  return null;
+}
+
 export async function markGmPayOrderPaid(input: {
   orderNumber: string;
   tradeId?: string;

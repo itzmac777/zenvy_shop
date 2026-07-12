@@ -4,6 +4,7 @@ import type { SubscriptionPlan } from "@zenvy/shared/types";
 
 type OrderStatusCardProps = {
   orderNumber: string;
+  contact?: string;
   orderPlacedAt: string;
   paymentMethod: string;
   orderAmount: string;
@@ -21,6 +22,7 @@ type OrderStatusCardProps = {
 
 export function OrderStatusCard({
   orderNumber,
+  contact,
   orderPlacedAt,
   paymentMethod,
   orderAmount,
@@ -80,12 +82,33 @@ export function OrderStatusCard({
       {statusNote ? <p className="mt-5 border border-line bg-panel px-3 py-2 text-[12px] font-bold text-muted">{statusNote}</p> : null}
 
       {paymentUrl ? (
-        <a
-          href={paymentUrl}
-          className="mt-5 inline-flex min-h-11 items-center justify-center border border-transparent bg-olive px-6 text-sm font-bold text-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.16)] transition hover:-translate-y-px hover:bg-olive-dark"
-        >
-          Continue payment
-        </a>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <a
+            href={paymentUrl}
+            className="inline-flex min-h-11 items-center justify-center border border-transparent bg-olive px-6 text-sm font-bold text-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.16)] transition hover:-translate-y-px hover:bg-olive-dark"
+          >
+            Continue payment
+          </a>
+        </div>
+      ) : null}
+
+      {paymentUrl ? (
+        <form action="/api/orders/verify-bsc-tx" method="post" className="mt-5 grid gap-3 border border-line bg-paper p-4">
+          <input type="hidden" name="order" value={orderNumber} />
+          <input type="hidden" name="contact" value={contact || ""} />
+          <label className="grid gap-1.5 text-sm font-bold">
+            BSC transaction hash
+            <input
+              name="txHash"
+              placeholder="0x..."
+              className="min-h-11 border border-line bg-white px-3 font-normal outline-none focus:border-olive"
+              required
+            />
+          </label>
+          <button type="submit" className="inline-flex min-h-11 items-center justify-center border border-transparent bg-olive px-6 text-sm font-bold text-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.16)] transition hover:-translate-y-px hover:bg-olive-dark">
+            Verify BSC payment
+          </button>
+        </form>
       ) : null}
 
       <div className="mt-6 grid gap-4 border-t border-line pt-5 md:grid-cols-[126px_minmax(0,1fr)] md:items-center">

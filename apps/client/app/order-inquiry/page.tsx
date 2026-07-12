@@ -91,6 +91,7 @@ export default async function OrderInquiryPage({ searchParams }: { searchParams:
           <div>
             <OrderStatusCard
               orderNumber={orderNumber}
+              contact={storedOrder.contact}
               orderPlacedAt={orderPlacedAt}
               paymentMethod={paymentMethod.label}
               orderAmount={orderAmount}

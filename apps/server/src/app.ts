@@ -1,9 +1,10 @@
 import cors from "cors";
 import express from "express";
 import { findPlan, formatOrderAmount, getOrderProductName, getUnitAmount, normalizeQuantity } from "@zenvy/shared/orders";
+import { verifyBscUsdtTransfer } from "./bsc-verifier";
 import { config } from "./config";
 import { createGmPayTransaction, type GmPayCallbackPayload, verifyGmPaySignature } from "./gmpay";
-import { createOrderNumber, findOrder, markGmPayOrderPaid, saveOrder, type OrderInput } from "./orders-repo";
+import { createOrderNumber, findOrder, findOrderByGmPayTxHash, markGmPayOrderPaid, saveOrder, type OrderInput } from "./orders-repo";
 
 function field(body: Record<string, unknown>, name: string) {
   const value = body[name];
@@ -159,6 +160,55 @@ export function createApp() {
     }
 
     return res.status(200).type("text/plain").send("ok");
+  });
+
+  app.post("/api/orders/verify-bsc-tx", async (req, res, next) => {
+    try {
+      const orderNumber = field(req.body, "order");
+      const contact = field(req.body, "contact");
+      const txHash = field(req.body, "txHash");
+      const order = await findOrder({ orderNumber });
+
+      if (!order) return res.status(404).json({ error: "Order not found." });
+      if (order.contact && contact && order.contact.toLowerCase() !== contact.toLowerCase()) {
+        return res.status(403).json({ error: "Contact information does not match this order." });
+      }
+      if (order.paymentMethod !== "gmpay") return res.status(400).json({ error: "This order is not a GM Pay order." });
+      if (order.status === "paid") return res.json({ order });
+
+      const existingTxOrder = await findOrderByGmPayTxHash(txHash);
+      if (existingTxOrder && existingTxOrder.orderNumber !== order.orderNumber) {
+        return res.status(409).json({ error: "This transaction hash has already been used for another order." });
+      }
+
+      const receiveAddress = order.gmpay?.receiveAddress || config.gmpay.receiveAddress;
+      if (!receiveAddress) {
+        return res.status(500).json({ error: "BSC receiving address is not configured." });
+      }
+
+      const verified = await verifyBscUsdtTransfer({
+        txHash,
+        receiveAddress,
+        minimumAmount: order.numericAmount,
+      });
+
+      const paidOrder = await markGmPayOrderPaid({
+        orderNumber: order.orderNumber,
+        tradeId: order.gmpay?.tradeId,
+        actualAmount: Number(verified.amount),
+        receiveAddress: verified.receiveAddress,
+        token: "USDT",
+        network: "binance",
+        txHash: verified.txHash,
+      });
+
+      if (!wantsJson(req)) {
+        return res.redirect(303, inquiryUrl(order.orderNumber, order.contact));
+      }
+      return res.json({ order: paidOrder });
+    } catch (error) {
+      return next(error);
+    }
   });
 
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
