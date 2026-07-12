@@ -100,6 +100,8 @@ Expected port ownership:
 - `GMPAY_PID`: merchant PID from GM Pay admin API key records.
 - `GMPAY_SECRET_KEY`: merchant signing key from GM Pay admin API key records.
 - `GMPAY_CURRENCY`: fiat currency sent to GM Pay, usually `usd`.
+- `GMPAY_TOKEN`: optional GM Pay token lock for new crypto orders, for example `USDT`.
+- `GMPAY_NETWORK`: optional GM Pay network lock for new crypto orders, for example `binance` for BSC.
 - `GMPAY_NOTIFY_URL`: GM Pay callback URL, usually `https://shop.zenvy.com.bd/api/gmpay/notify`.
 - `GMPAY_RETURN_URL`: customer return URL, usually `https://shop.zenvy.com.bd/order-inquiry`.
 - `OPENAI_API_KEY`: only needed when regenerating image assets.

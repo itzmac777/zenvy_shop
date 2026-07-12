@@ -12,6 +12,8 @@ export const config = {
     currency: (process.env.GMPAY_CURRENCY || "usd").toLowerCase(),
     notifyUrl: process.env.GMPAY_NOTIFY_URL || "",
     returnUrl: process.env.GMPAY_RETURN_URL || "",
+    token: process.env.GMPAY_TOKEN || "",
+    network: process.env.GMPAY_NETWORK || "",
   },
 };
 

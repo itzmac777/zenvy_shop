@@ -84,6 +84,8 @@ export function createApp() {
           amount: numericAmount,
           name: baseOrder.productName,
           redirect_url: returnUrl.toString(),
+          token: config.gmpay.token || undefined,
+          network: config.gmpay.network || undefined,
         });
 
         const order = await saveOrder({
