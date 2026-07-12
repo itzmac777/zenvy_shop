@@ -5,7 +5,7 @@ Zenvy is now split into a Docker Compose app:
 - `apps/client`: Next.js, TypeScript, and Tailwind storefront.
 - `apps/server`: Node.js, Express, TypeScript API for orders, GM Pay callbacks, and Postgres persistence.
 - `packages/shared`: shared catalog, product/order types, and order helpers.
-- `infra/`: Docker Compose, Caddy, and Dockerfiles.
+- `infra/`: Docker Compose and Dockerfiles.
 
 ## Local Development
 
@@ -33,17 +33,21 @@ Copy `.env.example` to `.env`, update secrets/domains, then run:
 docker compose -f infra/docker-compose.yml up --build
 ```
 
-Caddy is the public entrypoint from `infra/Caddyfile`:
+On the current VPS, Mailu already owns public ports `80` and `443`, so Zenvy does not run its own Caddy service. The Compose stack publishes only localhost ports:
 
-- `/api/*` routes to the Express server on `server:4000`.
-- Everything else routes to the Next.js client on `client:3000`.
-- Caddy manages SSL automatically for `APP_DOMAIN` when DNS points to the host.
+- Client: `127.0.0.1:3100 -> 3000`
+- Server: `127.0.0.1:4100 -> 4000`
+
+Route `shop.zenvy.com.bd` through the existing VPS proxy:
+
+- `/api/*` -> `http://127.0.0.1:4100`
+- everything else -> `http://127.0.0.1:3100`
+
+Do not bind Zenvy to `80`, `443`, `4000`, or `8443` on this VPS.
 
 ## Required Environment Variables
 
-- `APP_DOMAIN`: public storefront domain, for example `zenvy.store`.
-- `CADDY_EMAIL`: email for Caddy ACME/SSL notifications.
-- `CLIENT_PUBLIC_URL`: public storefront origin, for example `https://zenvy.store`.
+- `CLIENT_PUBLIC_URL`: public storefront origin, for example `https://shop.zenvy.com.bd`.
 - `SERVER_INTERNAL_URL`: internal server URL for the Next.js server runtime, usually `http://server:4000` in Compose.
 - `CORS_ORIGIN`: allowed browser origin for the Express API.
 - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DATABASE_URL`: Postgres settings.
@@ -51,8 +55,8 @@ Caddy is the public entrypoint from `infra/Caddyfile`:
 - `GMPAY_PID`: merchant PID from GM Pay admin API key records.
 - `GMPAY_SECRET_KEY`: merchant signing key from GM Pay admin API key records.
 - `GMPAY_CURRENCY`: fiat currency sent to GM Pay, usually `usd`.
-- `GMPAY_NOTIFY_URL`: GM Pay callback URL, usually `https://zenvy.store/api/gmpay/notify`.
-- `GMPAY_RETURN_URL`: customer return URL, usually `https://zenvy.store/order-inquiry`.
+- `GMPAY_NOTIFY_URL`: GM Pay callback URL, usually `https://shop.zenvy.com.bd/api/gmpay/notify`.
+- `GMPAY_RETURN_URL`: customer return URL, usually `https://shop.zenvy.com.bd/order-inquiry`.
 - `OPENAI_API_KEY`: only needed when regenerating image assets.
 
 bKash payment capture is still manual. Crypto payments use GM Pay as an external hosted cashier: the Express server creates a pending order, redirects customers to GM Pay, and marks the order paid after a signed callback.
