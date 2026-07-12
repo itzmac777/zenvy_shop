@@ -1,17 +1,28 @@
 import { config } from "./config";
-import { decimalToUnits, getCurrentBscBlockNumber, scanBscUsdtTransfersTo } from "./bsc-verifier";
+import { decimalToUnits, getCurrentBscBlockNumber, normalizeAddress, scanBscUsdtTransfersTo } from "./bsc-verifier";
 import { findOrderByGmPayTxHash, findPendingGmPayOrders, markGmPayOrderPaid } from "./orders-repo";
 
 let isRunning = false;
+
+function groupByReceiveAddress(orders: Awaited<ReturnType<typeof findPendingGmPayOrders>>) {
+  const groups = new Map<string, typeof orders>();
+
+  for (const order of orders) {
+    const receiveAddress = order.gmpay?.receiveAddress || config.gmpay.receiveAddress;
+    if (!receiveAddress) continue;
+
+    const key = normalizeAddress(receiveAddress);
+    groups.set(key, [...(groups.get(key) || []), order]);
+  }
+
+  return groups;
+}
 
 async function runBscPaymentScan() {
   if (isRunning) return;
   isRunning = true;
 
   try {
-    const receiveAddress = config.gmpay.receiveAddress;
-    if (!receiveAddress) return;
-
     const pendingOrders = await findPendingGmPayOrders();
     if (pendingOrders.length === 0) return;
 
@@ -20,25 +31,34 @@ async function runBscPaymentScan() {
     if (safeToBlock <= 0) return;
 
     const fromBlock = Math.max(0, safeToBlock - config.gmpay.bscWatcherLookbackBlocks);
-    const transfers = await scanBscUsdtTransfersTo({
-      receiveAddress,
-      fromBlock,
-      toBlock: safeToBlock,
-    });
 
-    if (transfers.length === 0) return;
+    for (const [receiveAddress, addressOrders] of groupByReceiveAddress(pendingOrders)) {
+      const transfers = await scanBscUsdtTransfersTo({
+        receiveAddress,
+        fromBlock,
+        toBlock: safeToBlock,
+      });
 
-    const transfersByAmount = new Map<string, typeof transfers>();
-    for (const transfer of transfers) {
-      const key = transfer.amountUnits.toString();
-      transfersByAmount.set(key, [...(transfersByAmount.get(key) || []), transfer]);
-    }
+      if (transfers.length === 0) continue;
 
-    for (const order of pendingOrders) {
-      const expectedAmount = decimalToUnits(order.numericAmount).toString();
-      const matchingTransfers = transfersByAmount.get(expectedAmount) || [];
+      const ordersByAmount = new Map<string, typeof addressOrders>();
+      for (const order of addressOrders) {
+        const expectedAmount = decimalToUnits(order.numericAmount).toString();
+        ordersByAmount.set(expectedAmount, [...(ordersByAmount.get(expectedAmount) || []), order]);
+      }
 
-      for (const transfer of matchingTransfers) {
+      for (const transfer of transfers) {
+        const matchingOrders = ordersByAmount.get(transfer.amountUnits.toString()) || [];
+        if (matchingOrders.length === 0) continue;
+
+        if (matchingOrders.length > 1) {
+          console.warn(
+            `[bsc-watcher] ambiguous ${transfer.amount} USDT transfer ${transfer.txHash}; ${matchingOrders.length} pending orders match ${receiveAddress}`,
+          );
+          continue;
+        }
+
+        const [order] = matchingOrders;
         const existingTxOrder = await findOrderByGmPayTxHash(transfer.txHash);
         if (existingTxOrder && existingTxOrder.orderNumber !== order.orderNumber) continue;
 
@@ -55,7 +75,6 @@ async function runBscPaymentScan() {
         console.log(
           `[bsc-watcher] marked order ${order.orderNumber} paid from ${transfer.txHash} at block ${transfer.blockNumber}`,
         );
-        break;
       }
     }
   } catch (error) {
