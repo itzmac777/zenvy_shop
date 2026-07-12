@@ -11,6 +11,13 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Zenvy",
   description: "Affordable premium subscriptions delivered quickly with clear support.",
+  icons: {
+    icon: [
+      { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/zenvy-icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/brand/zenvy-icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
