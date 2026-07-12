@@ -1,5 +1,7 @@
 import "dotenv/config";
 
+const gmPayCurrency = (process.env.GMPAY_CURRENCY || "usd").toLowerCase();
+
 export const config = {
   port: Number(process.env.PORT || 4000),
   databaseUrl: process.env.DATABASE_URL || "postgres://zenvy:zenvy_password@localhost:5432/zenvy",
@@ -9,7 +11,9 @@ export const config = {
     baseUrl: (process.env.GMPAY_BASE_URL || "").replace(/\/+$/, ""),
     pid: process.env.GMPAY_PID || "",
     secretKey: process.env.GMPAY_SECRET_KEY || "",
-    currency: (process.env.GMPAY_CURRENCY || "usd").toLowerCase(),
+    currency: gmPayCurrency,
+    usdToFiatRate: Number(process.env.GMPAY_USD_TO_FIAT_RATE || (gmPayCurrency === "cny" ? 6.99 : 1)),
+    fiatDustCents: Number(process.env.GMPAY_FIAT_DUST_CENTS || 20),
     notifyUrl: process.env.GMPAY_NOTIFY_URL || "",
     returnUrl: process.env.GMPAY_RETURN_URL || "",
     token: process.env.GMPAY_TOKEN || "",

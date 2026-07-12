@@ -99,7 +99,9 @@ Expected port ownership:
 - `GMPAY_BASE_URL`: hosted GM Pay/Epusdt domain, for example `https://pay.zenvy.store`.
 - `GMPAY_PID`: merchant PID from GM Pay admin API key records.
 - `GMPAY_SECRET_KEY`: merchant signing key from GM Pay admin API key records.
-- `GMPAY_CURRENCY`: fiat currency sent to GM Pay, usually `usd`.
+- `GMPAY_CURRENCY`: fiat currency sent to GM Pay. Use `cny` for 4-decimal USDT cashier amounts like `1.0323 USDT`; use `bdt` only after configuring a BDT rate in GM Pay.
+- `GMPAY_USD_TO_FIAT_RATE`: storefront USD-to-GM-Pay-fiat conversion rate, for example `6.99` when `GMPAY_CURRENCY=cny`.
+- `GMPAY_FIAT_DUST_CENTS`: small fiat-cent uniqueness range added before GM Pay converts to USDT, for example `20`.
 - `GMPAY_TOKEN`: optional GM Pay token lock for new crypto orders, for example `USDT`.
 - `GMPAY_NETWORK`: optional GM Pay network lock for new crypto orders, for example `binance` for BSC.
 - `GMPAY_RECEIVE_ADDRESS`: BSC USDT receiving address used by the fallback tx-hash verifier.
@@ -113,7 +115,7 @@ Expected port ownership:
 - `GMPAY_RETURN_URL`: customer return URL, usually `https://shop.zenvy.com.bd/order-inquiry`.
 - `OPENAI_API_KEY`: only needed when regenerating image assets.
 
-bKash payment capture is still manual. Crypto payments use GM Pay as an external hosted cashier: the Express server creates a pending order, redirects customers to GM Pay, and marks the order paid after a signed callback. Zenvy also has an optional BSC USDT watcher that scans confirmed token transfers to the configured receiving wallet and marks exact-amount pending orders paid if GM Pay misses auto-detection.
+bKash payment capture is still manual. Crypto payments use GM Pay as an external hosted cashier: the Express server creates a pending order, redirects customers to GM Pay, and marks the order paid after a signed callback. For crypto orders, Zenvy can keep storefront pricing in USD while sending GM Pay a fiat invoice such as CNY; GM Pay then returns the real 4-decimal `actual_amount` in USDT, which Zenvy stores for watcher and tx-hash verification. Zenvy also has an optional BSC USDT watcher that scans confirmed token transfers to the configured receiving wallet and marks exact-amount pending orders paid if GM Pay misses auto-detection.
 
 ## GM Pay Setup Notes
 

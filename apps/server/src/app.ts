@@ -27,14 +27,11 @@ function sendOrderResponse(req: express.Request, res: express.Response, order: A
   return res.redirect(303, redirectTo || inquiryUrl(order.orderNumber, order.contact));
 }
 
-function formatUsdAmount(amount: number) {
-  return `$${amount.toFixed(4).replace(/0+$/, "").replace(/\.$/, "")}`;
-}
-
-function getGmPayInvoiceAmount(baseAmount: number, orderNumber: string) {
+function getGmPayFiatAmount(usdAmount: number, orderNumber: string) {
   const suffix = Number(orderNumber.slice(-4));
-  const centOffset = ((Number.isFinite(suffix) ? suffix : 0) % 8) + 2;
-  return Number((baseAmount + centOffset / 100).toFixed(2));
+  const dustCents = Math.max(0, Math.min(99, config.gmpay.fiatDustCents));
+  const centOffset = dustCents > 0 ? ((Number.isFinite(suffix) ? suffix : 0) % dustCents) + 1 : 0;
+  return Number((usdAmount * config.gmpay.usdToFiatRate + centOffset / 100).toFixed(2));
 }
 
 export function createApp() {
@@ -89,11 +86,11 @@ export function createApp() {
         const returnUrl = new URL(config.gmpay.returnUrl || inquiryUrl(orderNumber, contact));
         returnUrl.searchParams.set("order", orderNumber);
         if (contact) returnUrl.searchParams.set("contact", contact);
-        const gmPayAmount = getGmPayInvoiceAmount(numericAmount, orderNumber);
+        const gmPayFiatAmount = getGmPayFiatAmount(numericAmount, orderNumber);
 
         const transaction = await createGmPayTransaction({
           order_id: orderNumber,
-          amount: gmPayAmount,
+          amount: gmPayFiatAmount,
           name: baseOrder.productName,
           redirect_url: returnUrl.toString(),
           token: config.gmpay.token || undefined,
@@ -104,8 +101,8 @@ export function createApp() {
           ...baseOrder,
           status: transaction.status === 3 ? "expired" : "pending_payment",
           currency: String(transaction.currency || baseOrder.currency).toLowerCase(),
-          amount: formatUsdAmount(transaction.amount ?? gmPayAmount),
-          numericAmount: transaction.amount ?? gmPayAmount,
+          amount: baseOrder.amount,
+          numericAmount: transaction.actual_amount ?? transaction.amount ?? gmPayFiatAmount,
           gmpay: {
             tradeId: transaction.trade_id,
             paymentUrl: transaction.payment_url,
