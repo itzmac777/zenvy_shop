@@ -26,6 +26,16 @@ function sendOrderResponse(req: express.Request, res: express.Response, order: A
   return res.redirect(303, redirectTo || inquiryUrl(order.orderNumber, order.contact));
 }
 
+function formatUsdAmount(amount: number) {
+  return `$${amount.toFixed(4).replace(/0+$/, "").replace(/\.$/, "")}`;
+}
+
+function getGmPayInvoiceAmount(baseAmount: number, orderNumber: string) {
+  const suffix = Number(orderNumber.slice(-4));
+  const dust = ((Number.isFinite(suffix) ? suffix : 0) % 90 + 10) / 10000;
+  return Number((baseAmount + dust).toFixed(4));
+}
+
 export function createApp() {
   const app = express();
 
@@ -78,10 +88,11 @@ export function createApp() {
         const returnUrl = new URL(config.gmpay.returnUrl || inquiryUrl(orderNumber, contact));
         returnUrl.searchParams.set("order", orderNumber);
         if (contact) returnUrl.searchParams.set("contact", contact);
+        const gmPayAmount = getGmPayInvoiceAmount(numericAmount, orderNumber);
 
         const transaction = await createGmPayTransaction({
           order_id: orderNumber,
-          amount: numericAmount,
+          amount: gmPayAmount,
           name: baseOrder.productName,
           redirect_url: returnUrl.toString(),
           token: config.gmpay.token || undefined,
@@ -92,7 +103,8 @@ export function createApp() {
           ...baseOrder,
           status: transaction.status === 3 ? "expired" : "pending_payment",
           currency: String(transaction.currency || baseOrder.currency).toLowerCase(),
-          amount: `$${transaction.amount ?? numericAmount}`,
+          amount: formatUsdAmount(transaction.amount ?? gmPayAmount),
+          numericAmount: transaction.amount ?? gmPayAmount,
           gmpay: {
             tradeId: transaction.trade_id,
             paymentUrl: transaction.payment_url,
